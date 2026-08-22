@@ -232,11 +232,11 @@
     </div>
     <div class="rail-legend">
       <span>Fine · 1/100 semitone</span>
-      <span>Coarse · 4 semitones</span>
+      <span>Coarse · half a semitone</span>
     </div>
     <div class="rail-keys">
-      <span class="key key-now">gap <b id="keyNow">50</b></span>
-      <span class="key key-cap" id="keyCapWrap">range <b id="keyCap">5–100</b></span>
+      <span class="key key-now">gap <b id="keyNow">25</b></span>
+      <span class="key key-cap" id="keyCapWrap">range <b id="keyCap">10–40</b></span>
       <span class="key key-best">best <b id="keyBest">—</b></span>
     </div>
   </div>
@@ -316,13 +316,13 @@
     </div>
 
     <div class="set-row" id="fixedRow">
-      <div class="set-lab">Gap · <span class="slider-val" id="fixedVal">50 cents</span></div>
-      <input type="range" id="fixedGap" min="1" max="300" value="50" step="1">
+      <div class="set-lab">Gap · <span class="slider-val" id="fixedVal">25 cents</span></div>
+      <input type="range" id="fixedGap" min="1" max="50" value="25" step="1">
       <p class="note" style="margin-top:6px">Every round uses this exact gap.</p>
     </div>
 
     <div class="set-row" id="rangeRow" hidden>
-      <div class="set-lab">Gap range · <span class="slider-val" id="rangeSpanVal">40 – 100 cents</span></div>
+      <div class="set-lab">Gap range · <span class="slider-val" id="rangeSpanVal">10 – 40 cents</span></div>
       <div class="dual" id="rangeDual"></div>
       <p class="note" style="margin-top:6px">Each round draws a gap at random from this span, so you get a spread of difficulties rather than one.</p>
     </div>
@@ -510,10 +510,10 @@
   "use strict";
   var A=window.TrainerAudio;
 
-  var MIN_GAP=1, MAX_GAP=400, DUR=0.55, PAUSE=0.28, SR=44100;
+  var MIN_GAP=1, MAX_GAP=50, DUR=0.55, PAUSE=0.28, SR=44100;
   var NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
-  var state={mode:'fixed',fixedGap:50,rangeLo:40,rangeHi:100,pitchLo:45,pitchHi:69,
+  var state={mode:'fixed',fixedGap:25,rangeLo:10,rangeHi:40,pitchLo:45,pitchHi:69,
     roundLen:20,rTrials:0,rCorrect:0,rSame:0,rSameOk:0,rDiff:0,rDiffOk:0,
     timbre:'pluck',route:'webaudio',vol:0.50,
     fx:true,trial:null,awaiting:false,playing:false,
@@ -1028,7 +1028,7 @@
   }
   function buildTicks(){
     var track=el('railTrack');
-    [1,2,5,10,25,50,100,200,400].forEach(function(v){
+    [1,2,3,5,10,20,35,50].forEach(function(v){
       var t=document.createElement('div');
       t.className='tick'; t.style.left=railPos(v)+'%'; track.appendChild(t);
       var n=document.createElement('div');
@@ -1043,9 +1043,9 @@
   // the wide upper buckets on top of each other.
   var BIN_EDGES=(function(){
     var e=[],v;
-    for(v=0;v<20;v+=2) e.push(v);
-    for(v=20;v<40;v+=4) e.push(v);
-    for(v=40;v<60;v+=5) e.push(v);
+    for(v=0;v<20&&v<MAX_GAP;v+=2) e.push(v);
+    for(v=20;v<40&&v<MAX_GAP;v+=4) e.push(v);
+    for(v=40;v<60&&v<MAX_GAP;v+=5) e.push(v);
     for(v=60;v<=MAX_GAP;v+=10) e.push(v);
     return e;
   })();
@@ -2128,7 +2128,7 @@
     state.fixedGap=parseInt(this.value,10);
     el('fixedVal').textContent=state.fixedGap+' cents'; render();
   });
-  dualGap=dualRange('rangeDual',{min:1,max:300,step:1,lo:state.rangeLo,hi:state.rangeHi,
+  dualGap=dualRange('rangeDual',{min:1,max:50,step:1,lo:state.rangeLo,hi:state.rangeHi,
     onChange:function(a,b){
       state.rangeLo=a; state.rangeHi=b;
       el('rangeSpanVal').textContent=a+' \u2013 '+b+' cents';
