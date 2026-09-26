@@ -421,10 +421,11 @@
       </div>
 
       <div class="set-row">
-        <div class="set-lab">Second note</div>
+        <div class="set-lab">Direction</div>
         <div class="seg" id="ivDirSeg">
-          <button data-dir="up" aria-pressed="true">Always above</button>
-          <button data-dir="both" aria-pressed="false">Above or below</button>
+          <button data-dir="up" aria-pressed="true">Ascending</button>
+          <button data-dir="down" aria-pressed="false">Descending</button>
+          <button data-dir="both" aria-pressed="false">Both</button>
         </div>
       </div>
 
@@ -497,7 +498,7 @@
     <summary><h2>How do I improve my ear?</h2></summary>
     <p>Aim to sit around <b>70–80% correct</b>. Score much higher and the exercise is too easy to be teaching you anything; sit near chance and there is no signal to learn from. After every round the summary tells you which side of that band you landed on — but it only advises. Nothing changes difficulty behind your back, so the controls below are yours to move.</p>
     <p>On the <b>Cent gap</b> tab, the blunt lever is <b>Gap</b>: lower it to make the task harder, raise it to make it easier. Switch <b>Gap type</b> to <b>Range</b> and each round draws a random gap from the span you set, which spreads practice across several difficulties instead of drilling one. <b>Pitch range</b> is the subtler lever. Narrow it to work a single register at a time; widen it to be tested everywhere. The low end is markedly harder than the middle, so the same gap sitting down at A1–A2 is a stiffer test than at A3–A4 — if a gap feels impossible, try it higher up before you widen it.</p>
-    <p>On the <b>Intervals</b> tab, <b>Intervals in play</b> is the main dial. Fewer intervals means a better chance of guessing right and an easier round; switching one more on makes it harder, and the summary suggests which neighbour to add next. <b>Second note</b> set to <b>Above or below</b> brings in descending intervals, which most people find harder than ascending ones. <b>Octaves in play</b> widens the register the tonic can appear in. <b>Scale</b> selects a whole set at once when you would rather work in a key than pick intervals by hand.</p>
+    <p>On the <b>Intervals</b> tab, <b>Intervals in play</b> is the main dial. Fewer intervals means a better chance of guessing right and an easier round; switching one more on makes it harder, and the summary suggests which neighbour to add next. <b>Direction</b> set to <b>Descending</b> or <b>Both</b> brings in descending intervals, which most people find harder than ascending ones. On <b>Both</b> the note and solfège under each button follow whichever way the pair you just heard moved — the interval number never moves, since a third is a third in either direction. <b>Octaves in play</b> widens the register the tonic can appear in. <b>Scale</b> selects a whole set at once when you would rather work in a key than pick intervals by hand.</p>
     <p>Two habits worth keeping. Change one thing at a time, or you will not know which change moved your score. And hit <b>Reset stats and charts</b> after a real difficulty change, so the charts describe the exercise you are actually doing rather than an average of two. Short, frequent sessions beat long ones — <b>Pairs per round</b> in the preferences sets how often you get a summary.</p>
   </details>
 </article>
@@ -1521,7 +1522,13 @@
   // Lowered degrees take the -e forms (Me, Le, Te) and the tritone is Se,
   // matching the diminished-5th spelling used for the note names.
   var SOLFA=['Do','Ra','Re','Me','Mi','Fa','Se','Sol','Le','La','Te','Ti','Do'];
-  function ivSolfa(deg){ return SOLFA[deg]||''; }
+  // Descending lands where the inversion would: down a 4th from Do is Sol,
+  // the same note up a 5th reaches. Tritone, octave and unison invert to
+  // themselves, so those three read the same either way.
+  function ivSolfa(deg,down){
+    if(down===undefined) down=ivLabelDown();
+    return SOLFA[down?(12-deg)%12:deg]||'';
+  }
 
   // Number keys name the interval by its scale-step number; shift widens it by
   // a semitone. So 3 is the minor 3rd and shift-3 the major 3rd, 4 the perfect
@@ -1600,23 +1607,40 @@
     el('ivVerdict').textContent=''; el('ivVerdict').className='verdict';
     el('ivPlay').innerHTML='Play the pair<span class="btn-key">space</span>';
   }
-  function ivNoteName(deg){ return ivNoteFrom(ivLabelRoot(),deg); }
+  function ivNoteName(deg,down){
+    if(down===undefined) down=ivLabelDown();
+    return ivNoteFrom(ivLabelRoot(),deg,down);
+  }
+  // Which way the labels should read. Fixed in the two focused modes, so the
+  // grid is as stable as it ever was; only on Both does it follow the pair,
+  // and there it is describing something you have already heard.
+  function ivLabelDown(){
+    if(iv.dir==='down') return true;
+    if(iv.dir==='up') return false;
+    return !!(iv.trial&&iv.trial.down);
+  }
 
   var iv={root:48,octaves:1,dir:'up',rTrials:0,rCorrect:0,rStats:{},
           on:[true,false,true,false,true,true,false,true,false,true,false,true,true],
           trial:null,awaiting:false,trials:0,correct:0,streak:0,best:0,
           deck:[],stats:{}};
 
-  // Spell the note this interval lands on, relative to a given root.
-  function ivNoteFrom(root,deg){
-    var pc=((root+deg)%12+12)%12;
+  // Spell the note this interval lands on, relative to a given root. Going
+  // down is not the same note an octave lower: a major 2nd below C is B-flat,
+  // not D, so both the pitch and the letter step have to reverse.
+  function ivNoteFrom(root,deg,down){
+    var pc=((root+(down?-deg:deg))%12+12)%12;
     var rootLetter=PC_LETTER[((root%12)+12)%12];
-    var name=spell(pc, rootLetter+IV_LETTER[deg]);
+    var name=spell(pc, rootLetter+(down?-IV_LETTER[deg]:IV_LETTER[deg]));
     // A few remote combinations land on a double accidental (E-flat's tritone
     // reads B-double-flat). Nobody writes those, so fall back to the plain name.
     if(name.length>2) name=spell(pc,PC_LETTER[pc]);
     return name;
   }
+
+  // Ascending and descending are different skills on the same interval, so a
+  // pooled figure hides exactly what the Both mode exists to show.
+  function ivFreshStat(){ return {n:0,ok:0,up:{n:0,ok:0},dn:{n:0,ok:0}}; }
 
   function ivEnabled(){
     var out=[];
@@ -1645,10 +1669,20 @@
     var root = iv.root+12*Math.floor(Math.random()*iv.octaves);
     root=Math.max(PITCH_LO,Math.min(PITCH_HI-12,root));
     var deg=ivDrawDegree();
-    var down = (iv.dir==='both' && Math.random()<0.5);
+    var down = (iv.dir==='down') || (iv.dir==='both' && Math.random()<0.5);
     var other = down ? root-deg : root+deg;
     other=Math.max(PITCH_LO,Math.min(PITCH_HI,other));
     return {root:root,deg:deg,other:other,down:down};
+  }
+
+  // Only the sub-label moves; the interval number stays where it is, so the
+  // grid keeps its shape and whatever muscle memory you have built on it.
+  function ivRelabel(){
+    var kids=el('ivDegrees').children;
+    for(var d=0;d<kids.length;d++){
+      kids[d].innerHTML=ivInterval(d).ab+'<span>'+ivNoteName(d)+' \u00b7 '+ivSolfa(d)+'</span>'+
+        (IV_HINT[d]?'<em>'+IV_HINT[d]+'</em>':'');
+    }
   }
 
   function ivPlayPair(t){
@@ -1691,8 +1725,12 @@
     ivClearMarks();
     el('ivVerdict').textContent=''; el('ivVerdict').className='verdict';
     iv.trial=ivNewTrial();
-    ivBuildKeys();          // relabel against this round's starting note
+    // after the pair sounds, not before: on Both the labels name the direction,
+    // and that should describe something you have already heard rather than
+    // announce what is coming
     ivPlayPair(iv.trial);
+    ivBuildKeys();          // relabel against this round's starting note
+
     ivSetAnswerable(true);
     el('ivReplay').disabled=false;
     el('ivPlay').innerHTML='Next pair<span class="btn-key">space</span>';
@@ -1704,15 +1742,18 @@
     var t=iv.trial, right=(deg===t.deg);
     ivSetAnswerable(false);
     iv.trials++;
-    var st=iv.stats[t.deg]||(iv.stats[t.deg]={n:0,ok:0});
-    st.n++;
+    var st=iv.stats[t.deg]||(iv.stats[t.deg]=ivFreshStat());
+    var sd=t.down?st.dn:st.up;
+    st.n++; sd.n++;
     iv.rTrials++;
     if(right) iv.rCorrect++;
-    var rst=iv.rStats[t.deg]||(iv.rStats[t.deg]={n:0,ok:0});
-    rst.n++; if(right) rst.ok++;
+    var rst=iv.rStats[t.deg]||(iv.rStats[t.deg]=ivFreshStat());
+    var rsd=t.down?rst.dn:rst.up;
+    rst.n++; rsd.n++;
+    if(right){ rst.ok++; rsd.ok++; }
     ivProgress();
     if(right){
-      iv.correct++; st.ok++; iv.streak++;
+      iv.correct++; st.ok++; sd.ok++; iv.streak++;
       if(iv.streak>iv.best) iv.best=iv.streak;
     } else iv.streak=0;
 
@@ -1750,7 +1791,7 @@
     var html='';
     rows.forEach(function(d){
       var st=iv.rStats[d];
-      html+=bar(ivInterval(d).ab+' '+ivSolfa(d), st?st.ok:0, st?st.n:0);
+      html+=bar(ivInterval(d).ab+(iv.dir==='both'?'':' '+ivSolfa(d)), st?st.ok:0, st?st.n:0);
     });
     el('roundBreak').innerHTML=html;
 
@@ -1783,6 +1824,22 @@
       say+=' The <b>'+ivInterval(w).name+'</b> is costing you most \u2014 '+
            ws.ok+' of '+ws.n+'.';
     }
+    // the reason Both exists: say which side of it is actually weaker
+    if(iv.dir==='both'){
+      var up={n:0,ok:0}, dn={n:0,ok:0};
+      live.forEach(function(d){
+        var st=iv.rStats[d]; if(!st) return;
+        up.n+=st.up.n; up.ok+=st.up.ok; dn.n+=st.dn.n; dn.ok+=st.dn.ok;
+      });
+      if(up.n>=3&&dn.n>=3){
+        var ua=up.ok/up.n, da=dn.ok/dn.n;
+        say+=' Ascending <b>'+Math.round(ua*100)+'%</b>, descending <b>'+
+             Math.round(da*100)+'%</b>';
+        say+= Math.abs(ua-da)<0.15 ? ' \u2014 evenly matched.'
+            : (da<ua ? ' \u2014 the descending ones are where the work is.'
+                     : ' \u2014 unusually, the ascending ones are the weaker side.');
+      }
+    }
     el('roundSay').innerHTML=say;
 
     var wrap=el('roundActions');
@@ -1799,22 +1856,42 @@
   function ivDrawChart(){
     var svg=el('ivChart'), out=[];
     chartFrame(out,1/ivEnabled().length);
-    var span=CH.w-CH.l-CH.r, slot=span/N_IV, bw=Math.min(26,slot*0.62), total=0;
+    var span=CH.w-CH.l-CH.r, slot=span/N_IV, bw=Math.min(26,slot*0.62), total=0, split=false;
     for(var d=0;d<N_IV;d++){
       var st=iv.stats[d], cx=CH.l+slot*(d+0.5), y0=chartY(0);
       if(st&&st.n){
         total+=st.n;
-        var acc=st.ok/st.n, y=chartY(acc);
-        out.push(tag('rect',{x:(cx-bw/2).toFixed(1),y:y.toFixed(1),
-          width:bw.toFixed(1),height:Math.max(1,y0-y).toFixed(1),
-          fill:'var(--signal)',opacity:.85,rx:1}));
-        out.push(tag('text',{x:cx.toFixed(1),y:(y-4).toFixed(1),'text-anchor':'middle',
-          'font-family':'Space Mono, monospace','font-size':7.5,fill:'var(--ink)'},
-          Math.round(acc*100)+''));
+        // Split only once both directions have been asked. One bar while the
+        // practice is one-directional keeps the chart as readable as it was.
+        if(st.up.n&&st.dn.n){
+          split=true;
+          var hw=bw/2-1;
+          [[st.up,cx-bw/2,'var(--signal)'],[st.dn,cx+1,'var(--graphite)']].forEach(function(b){
+            var a=b[0].ok/b[0].n, yy=chartY(a);
+            out.push(tag('rect',{x:b[1].toFixed(1),y:yy.toFixed(1),
+              width:hw.toFixed(1),height:Math.max(1,y0-yy).toFixed(1),
+              fill:b[2],opacity:.85,rx:1}));
+          });
+        } else {
+          var acc=st.ok/st.n, y=chartY(acc);
+          out.push(tag('rect',{x:(cx-bw/2).toFixed(1),y:y.toFixed(1),
+            width:bw.toFixed(1),height:Math.max(1,y0-y).toFixed(1),
+            fill:st.dn.n?'var(--graphite)':'var(--signal)',opacity:.85,rx:1}));
+          out.push(tag('text',{x:cx.toFixed(1),y:(y-4).toFixed(1),'text-anchor':'middle',
+            'font-family':'Space Mono, monospace','font-size':7.5,fill:'var(--ink)'},
+            Math.round(acc*100)+''));
+        }
       }
       out.push(tag('text',{x:cx.toFixed(1),y:(y0+14).toFixed(1),'text-anchor':'middle',
         'font-family':'Space Mono, monospace','font-size':8,
         fill:iv.on[d]?'var(--ink)':'var(--muted)'},ivInterval(d).ab));
+    }
+    if(split){
+      [['var(--signal)','up',0],['var(--graphite)','down',34]].forEach(function(g){
+        out.push(tag('rect',{x:(CH.l+g[2]).toFixed(1),y:2,width:7,height:7,rx:1,fill:g[0]}));
+        out.push(tag('text',{x:(CH.l+g[2]+10).toFixed(1),y:8.5,
+          'font-family':'Space Mono, monospace','font-size':7.5,fill:'var(--muted)'},g[1]));
+      });
     }
     svg.innerHTML=out.join('');
     el('ivChartNote').textContent = total===0 ? 'no rounds yet' : 'across '+total+' round'+(total===1?'':'s');
@@ -2076,7 +2153,7 @@
   el('ivOct').addEventListener('input',function(){
     iv.octaves=parseInt(this.value,10); ivRender();
   });
-  segment('ivDirSeg','dir',function(v){ iv.dir=v; ivSyncRange(); });
+  segment('ivDirSeg','dir',function(v){ iv.dir=v; ivSyncRange(); ivRelabel(); });
   el('ivReset').addEventListener('click',function(){
     iv.trials=0; iv.correct=0; iv.streak=0; iv.best=0;
     iv.stats={}; iv.deck=[]; iv.trial=null; ivBuildKeys(); ivRoundReset();
