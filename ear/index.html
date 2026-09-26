@@ -434,9 +434,9 @@
         <div class="seg" id="ivTonicSeg">
           <button data-every="1" aria-pressed="true">Every pair</button>
           <button data-every="5" aria-pressed="false">Every 5</button>
-          <button data-every="10" aria-pressed="false">Every 10</button>
+          <button data-every="0" aria-pressed="false">Once</button>
         </div>
-        <p class="note" style="margin-top:6px">Between refreshes only the second note sounds and you hold the tonic yourself &mdash; much closer to hearing a note in music and knowing where it sits. The reference stays on the same pitch until it is sounded again.</p>
+        <p class="note" style="margin-top:6px">Between refreshes only the second note sounds and you hold the tonic yourself &mdash; much closer to hearing a note in music and knowing where it sits. <b>Once</b> sounds it at the start of the round and never again. The reference stays on the same pitch until it is sounded again.</p>
       </div>
 
       <div class="set-row">
@@ -508,7 +508,7 @@
     <summary><h2>How do I improve my ear?</h2></summary>
     <p>Aim to sit around <b>70–80% correct</b>. Score much higher and the exercise is too easy to be teaching you anything; sit near chance and there is no signal to learn from. After every round the summary tells you which side of that band you landed on — but it only advises. Nothing changes difficulty behind your back, so the controls below are yours to move.</p>
     <p>On the <b>Cent gap</b> tab, the blunt lever is <b>Gap</b>: lower it to make the task harder, raise it to make it easier. Switch <b>Gap type</b> to <b>Range</b> and each round draws a random gap from the span you set, which spreads practice across several difficulties instead of drilling one. <b>Pitch range</b> is the subtler lever. Narrow it to work a single register at a time; widen it to be tested everywhere. The low end is markedly harder than the middle, so the same gap sitting down at A1–A2 is a stiffer test than at A3–A4 — if a gap feels impossible, try it higher up before you widen it.</p>
-    <p>On the <b>Intervals</b> tab, <b>Intervals in play</b> is the main dial. Fewer intervals means a better chance of guessing right and an easier round; switching one more on makes it harder, and the summary suggests which neighbour to add next. <b>Direction</b> set to <b>Descending</b> or <b>Both</b> brings in descending intervals, which most people find harder than ascending ones. On <b>Both</b> the note and solfège under each button follow whichever way the pair you just heard moved — the interval number never moves, since a third is a third in either direction. <b>Sound the tonic</b> decides how often the reference note is restated: every pair is the plain version, while every 5 or every 10 makes you carry the tonic in your head between refreshes — markedly harder, and much closer to what hearing a note in real music asks of you. <b>Octaves in play</b> widens the register the tonic can appear in. <b>Scale</b> selects a whole set at once when you would rather work in a key than pick intervals by hand.</p>
+    <p>On the <b>Intervals</b> tab, <b>Intervals in play</b> is the main dial. Fewer intervals means a better chance of guessing right and an easier round; switching one more on makes it harder, and the summary suggests which neighbour to add next. <b>Direction</b> set to <b>Descending</b> or <b>Both</b> brings in descending intervals, which most people find harder than ascending ones. On <b>Both</b> the note and solfège under each button follow whichever way the pair you just heard moved — the interval number never moves, since a third is a third in either direction. <b>Sound the tonic</b> decides how often the reference note is restated: every pair is the plain version, while every 5, or once at the top of the round, makes you carry the tonic in your head — markedly harder, and much closer to what hearing a note in real music asks of you. On <b>Once</b> the reference is given to you one time and has to last the whole round. <b>Octaves in play</b> widens the register the tonic can appear in. <b>Scale</b> selects a whole set at once when you would rather work in a key than pick intervals by hand.</p>
     <p>Two habits worth keeping. Change one thing at a time, or you will not know which change moved your score. And hit <b>Reset stats and charts</b> after a real difficulty change, so the charts describe the exercise you are actually doing rather than an average of two. Short, frequent sessions beat long ones — <b>Pairs per round</b> in the preferences sets how often you get a summary.</p>
   </details>
 </article>
@@ -1681,7 +1681,10 @@
     // Between refreshes the reference has to stay on the same pitch. Drawing a
     // new octave while the tonic is silent would leave nothing to hold on to,
     // and the exercise would be guesswork rather than memory.
-    var fresh = iv.tonicEvery<=1 || iv.heldRoot==null || iv.sinceTonic>=iv.tonicEvery;
+    // tonicEvery 0 means once a round: nothing refreshes it after the first
+    // trial, so the only thing that brings it back is the round starting over.
+    var every = iv.tonicEvery;
+    var fresh = iv.heldRoot==null || every===1 || (every>1 && iv.sinceTonic>=every);
     var root;
     if(fresh){
       root = iv.root+12*Math.floor(Math.random()*iv.octaves);
