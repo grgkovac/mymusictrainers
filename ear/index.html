@@ -198,10 +198,11 @@
     <div class="set-row">
       <div class="set-lab">Feedback sound</div>
       <div class="seg" id="fxSeg">
-        <button data-fx="on" aria-pressed="true">On</button>
+        <button data-fx="on" aria-pressed="true">Always</button>
+        <button data-fx="wrong" aria-pressed="false">Wrong only</button>
         <button data-fx="off" aria-pressed="false">Off</button>
       </div>
-      <p class="set-hint">The short noise burst that marks right or wrong &mdash; bright and quick when you are right, duller and longer when you are not. Answering an interval always sounds the note you pressed; this only decides whether the burst comes with it.</p>
+      <p class="set-hint">The short noise burst that marks an answer &mdash; bright and quick when you are right, duller and longer when you are not. <b>Wrong only</b> keeps the burst for misses and lets a correct answer pass without comment. Answering an interval always sounds the note you pressed; this decides only whether a burst comes with it.</p>
     </div>
 
     <div class="set-row">
@@ -342,7 +343,7 @@
       <button class="btn" id="resetBtn">Reset stats and charts</button>
     </div>
 
-    <p class="note">Answering an interval always sounds the note you pressed, so a wrong guess tells you what you took it for. <b>Feedback sound</b> in the settings decides only whether the right/wrong noise burst comes with it. Every round is one of three outcomes — tone 1 higher, tone 2 higher, or both identical — dealt from a shuffled block of nine, three of each, so the mix can't drift lopsided. The starting pitch moves every round too, and the difficulty readout shows the gap a differing pair would have used, so it never gives away which kind you just heard.</p>
+    <p class="note">Answering an interval always sounds the note you pressed, so a wrong guess tells you what you took it for. <b>Feedback sound</b> in the settings decides only whether a noise burst comes with it, and whether it marks every answer or just the ones you miss. Every round is one of three outcomes — tone 1 higher, tone 2 higher, or both identical — dealt from a shuffled block of nine, three of each, so the mix can't drift lopsided. The starting pitch moves every round too, and the difficulty readout shows the gap a differing pair would have used, so it never gives away which kind you just heard.</p>
   </section>
   </section>
 
@@ -531,7 +532,7 @@
   var state={mode:'fixed',fixedGap:25,rangeLo:10,rangeHi:40,pitchLo:45,pitchHi:69,
     roundLen:20,rTrials:0,rCorrect:0,rSame:0,rSameOk:0,rDiff:0,rDiffOk:0,
     timbre:'pluck',route:'webaudio',vol:0.50,
-    fx:true,trial:null,awaiting:false,playing:false,
+    fx:'on',trial:null,awaiting:false,playing:false,
     trials:0,correct:0,streak:0,best:null,
     deck:[],count1:0,count2:0,count0:0,
     bins:{},pitchBins:{},typeStats:{0:{n:0,ok:0},1:{n:0,ok:0},2:{n:0,ok:0}}};
@@ -766,7 +767,10 @@
   }
 
   function playFeedback(ok){
-    if(!state.fx) return;
+    // 'wrong' is the quiet-practice setting: a miss still interrupts you, a
+    // correct answer just leaves the note you pressed standing on its own.
+    if(state.fx==='off') return;
+    if(state.fx==='wrong'&&ok) return;
     var peak=Math.min(0.5,0.42*state.vol);   // sits under the tones
     try{
       if(state.route==='element'&&A.isRunning()) state.route='webaudio';
@@ -2246,8 +2250,10 @@
   dualPitch=dualRange('pitchDual',{min:21,max:108,step:1,lo:state.pitchLo,hi:state.pitchHi,
     onChange:function(a,b){ state.pitchLo=a; state.pitchHi=b; syncRegister(); }});
   segment('fxSeg','fx',function(v){
-    state.fx=(v==='on');
-    if(state.fx) playFeedback(true);   // preview when switching on
+    state.fx=v;
+    // preview the burst this setting will actually produce
+    if(v==='on') playFeedback(true);
+    else if(v==='wrong') playFeedback(false);
   });
 
   el('fixedGap').addEventListener('input',function(){
