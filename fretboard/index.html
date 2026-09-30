@@ -212,7 +212,15 @@
         <button data-fx="on" aria-pressed="true">On</button>
         <button data-fx="off" aria-pressed="false">Off</button>
       </div>
-      <p class="set-hint">Notes as you mark them, the note you were asked for, and a thud when you get one wrong.</p>
+      <p class="set-hint">Notes as you mark them, and the note you were asked for.</p>
+    </div>
+    <div class="set-row">
+      <div class="set-lab">Feedback sound</div>
+      <div class="seg" id="fbSeg">
+        <button data-fb="on" aria-pressed="true">On</button>
+        <button data-fb="off" aria-pressed="false">Off</button>
+      </div>
+      <p class="set-hint">The dull thud that marks a wrong answer. Off leaves the notes playing on their own.</p>
     </div>
     <div class="set-row">
       <div class="set-lab">Volume · <span class="slider-val" id="volVal">50%</span></div>
@@ -405,7 +413,7 @@
     // round of the same length takes far longer than naming single positions
     roundLenBy:{name:20,find:10},
     roundLen:20,
-    fx:true, vol:0.5,
+    fx:true, fb:true, vol:0.5,
     route:'ctx',
     trial:null,                  // {s,f,midi,pc,target,answered,pick,ok,t0}
     dialog:null,
@@ -623,23 +631,24 @@
     // the fallback is for a context that will not wake, not a permanent verdict
     if(state.route==='element'&&A.isRunning()) state.route='webaudio';
     var c=state.route==='element'?null:ensureCtx();
+    var thud=fail&&state.fb;
     if(c){
-      if(fail) scheduleThud(c,c.currentTime+0.03);
+      if(thud) scheduleThud(c,c.currentTime+0.03);
       // resume() is async and often still reads 'suspended' right here on the
       // first gesture. Schedule anyway; only fall back if it never wakes.
-      scheduleNote(f,c.currentTime+0.05+(fail?THUD_LEAD:0),DUR);
+      scheduleNote(f,c.currentTime+0.05+(thud?THUD_LEAD:0),DUR);
       if(c.state!=='running'){
         setTimeout(function(){
           if(c.state!=='running'&&state.route!=='element'){
             alog('context never resumed, switching to audio element');
             state.route='element';
-            playViaElement(f,fail);
+            playViaElement(f,thud);
           }
         },350);
       }
     } else {
       state.route='element';
-      playViaElement(f,fail);
+      playViaElement(f,thud);
     }
   }
 
@@ -1694,6 +1703,7 @@
   onSeg('themeSeg','theme',function(v){ document.documentElement.setAttribute('data-theme',v); });
   onSeg('handSeg','hand',function(v){ state.hand=v; drawBoard(); });
   onSeg('fxSeg','fx',function(v){ state.fx=(v==='on'); });
+  onSeg('fbSeg','fb',function(v){ state.fb=(v==='on'); });
 
   el('stringChips').addEventListener('click',function(e){
     var b=e.target;

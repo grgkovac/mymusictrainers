@@ -201,6 +201,7 @@
         <button data-fx="on" aria-pressed="true">On</button>
         <button data-fx="off" aria-pressed="false">Off</button>
       </div>
+      <p class="set-hint">The short noise burst that marks right or wrong &mdash; bright and quick when you are right, duller and longer when you are not. Answering an interval always sounds the note you pressed; this only decides whether the burst comes with it.</p>
     </div>
 
     <div class="set-row">
@@ -341,7 +342,7 @@
       <button class="btn" id="resetBtn">Reset stats and charts</button>
     </div>
 
-    <p class="note">Every round is one of three outcomes — tone 1 higher, tone 2 higher, or both identical — dealt from a shuffled block of nine, three of each, so the mix can't drift lopsided. The starting pitch moves every round too, and the difficulty readout shows the gap a differing pair would have used, so it never gives away which kind you just heard.</p>
+    <p class="note">Answering an interval always sounds the note you pressed, so a wrong guess tells you what you took it for. <b>Feedback sound</b> in the settings decides only whether the right/wrong noise burst comes with it. Every round is one of three outcomes — tone 1 higher, tone 2 higher, or both identical — dealt from a shuffled block of nine, three of each, so the mix can't drift lopsided. The starting pitch moves every round too, and the difficulty readout shows the gap a differing pair would have used, so it never gives away which kind you just heard.</p>
   </section>
   </section>
 
@@ -1768,6 +1769,17 @@
     ivRender();
   }
 
+  // Pressing a button sounds the note that button stands for, in the
+  // direction the pair moved. Right or wrong you hear your own guess, which
+  // says more than a blip does: a wrong answer tells you what you took it for.
+  function ivPlayAnswer(deg){
+    var t=iv.trial; if(!t) return;
+    var midi=t.down ? t.root-deg : t.root+deg;
+    midi=Math.max(PITCH_LO,Math.min(PITCH_HI,midi));
+    flashTone(el('ivTone2'),0,DUR*1000);
+    playSegments([{freq:midiFreq(midi),dur:DUR}]);
+  }
+
   function ivAnswer(deg){
     if(!iv.awaiting||!iv.trial) return;
     var t=iv.trial, right=(deg===t.deg);
@@ -1793,7 +1805,8 @@
     if(!right) kids[t.deg].classList.add('mark-truth');
     el('ivTone2').classList.add('win');
     fireFlash(right);
-    playFeedback(right);
+    ivPlayAnswer(deg);      // always: hearing your own guess is the lesson
+    playFeedback(right);    // and the burst on top, if it is switched on
 
     el('ivVerdict').className='verdict '+(right?'ok':'no');
     var iq=ivInterval(t.deg);
